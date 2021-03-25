@@ -39,9 +39,17 @@ app.get("/flips", (req, res)=>{
 // Since some ID's may already be used, you find the largest assigned id.
 let lastFlipId = flips.reduce((maxId, flip) => Math.max(maxId, flip.id), 0);
 
-app.post("/flips", (req, res, next) => {
-  const { data: { result } = {} } = req.body;
+function bodyHasResultProperty(req,res,next){
+const { data: { result } = {} } = req.body;
   if (result) {
+    return next();
+  }
+    next({status: 400, message: "A 'result' property is required",});
+  
+}
+
+app.post("/flips", bodyHasResultProperty,(req, res, next) => {
+  const { data: { result } = {} } = req.body;
   const newFlip = {
     id: ++lastFlipId, // Increment last id then assign as the current ID
     result,
@@ -50,10 +58,8 @@ app.post("/flips", (req, res, next) => {
   counts[result] = counts[result] + 1; // Increment the counts
   //res.json({ data: newFlip });
   res.status(201).json({ data: newFlip });
-  } else {
-    res.sendStatus(400);
-  }
-});
+}
+);
 
 // Not found handler
 app.use((request, response, next) => {
@@ -62,8 +68,8 @@ app.use((request, response, next) => {
 
 // Error handler
 app.use((error, request, response, next) => {
-  console.error(error);
-  response.send(error);
+  const { status = 500, message = "Something went wrong!"} = error;
+  response.status(status).json({error: message});
 });
 
 module.exports = app;
